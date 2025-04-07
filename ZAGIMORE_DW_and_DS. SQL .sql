@@ -304,7 +304,7 @@ select RevenueGenerated,	UnitSolds,	RevenueType,	TID,	Customer_Key,	Store_Key,	P
  SET f_loaded= TRUE
  WHERE f_loaded = FALSE;
 
---- 03/27
+--- 
 --1
 INSERT INTO `salestransaction` (`tid`, `customerid`, `storeid`, `tdate`)
 VALUES ('BBC', '7-8-999', 'S4', '2025-03-27');
@@ -452,7 +452,7 @@ INSERT INTO `product` (`productid`, `productname`, `productprice`, `vendorid`, `
 INSERT INTO `product` (`productid`, `productname`, `productprice`, `vendorid`, `categoryid`) VALUES ('2Z2', 'COFFEE', '10', 'OA', 'CY');
 INSERT INTO `rentalProducts` (`productid`, `productname`, `vendorid`, `categoryid`, `productpricedaily`, `productpriceweekly`) VALUES ('2Z2', 'COFFEE', 'WL', 'CY', '20', '1000');
 
----Procedure dont forget to put the $$$ on your spce boc when creating the procedure
+---Procedure dont forget to put the $$$ on spce boc when creating the procedure
 
 CREATE PROCEDURE Daily_Product_Refresh()
 BEGIN
