@@ -253,7 +253,7 @@ FROM RevenueFact)
 ALTER TABLE IntermediateFactTable
 MODIFY RevenueType VARCHAR (25);
 
----DAILY RENTAL EXTRACT TABLE FOR WEEKLY RENTALS BUT JUMB IT AND FINISH THE CODE THEN COME BACK TO THIS  after step 6.
+---DAILY RENTAL EXTRACT TABLE FOR WEEKLY RENTALS.
 
 INSERT INTO IntermediateFactTable(UnitSolds, RevenueGenerated, RevenueType, TID, productId, customerId, storeId, fullDate)
 SELECT 0, r.productpricedaily * rv.duration , "RentalDaily", rv.tid, r.productid, c.customerid, s.storeid, rt.tdate
