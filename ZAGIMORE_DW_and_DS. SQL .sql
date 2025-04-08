@@ -669,7 +669,88 @@ VALUES ('1X1', 'NEWRT', 'D', '5');
 INSERT INTO `rentvia` (`productid`, `tid`, `rentaltype`, `duration`)
 VALUES ('2X2', 'NEWRT', 'W', '6');.
 
+--- Dealing with type 2 changes 
 
+--- Checking for changes in price
+-- Adding Date Valid From, Date Valid Until and Status column to DS and Dw
+
+---1 
+SELECT p.productid, p.productname , p.productprice, v.vendorid, v.vendorname ,c.categoryid, c.categoryname , 'Sales', , pd.ProductSalesPrice
+FROM  mudzimtb_ZAGIMORE.product as p , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v, Product_Dimension AS pd
+WHERE c.categoryid = p.categoryid and p.vendorid = v.vendorid 
+AND pd.ProductId= p.ProductId
+AND pd.ProductType = "Sales"
+
+
+---2 
+SELECT p.productid, p.productname , p.productprice,  pd.ProductSalesPrice
+FROM  mudzimtb_ZAGIMORE.product as p , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v, Product_Dimension AS pd
+WHERE c.categoryid = p.categoryid and p.vendorid = v.vendorid 
+AND pd.ProductId= p.ProductId
+AND pd.ProductType = "Sales"
+
+
+---  Should get one raw
+SELECT p.productid, p.productname , p.productprice,  pd.ProductSalesPrice
+FROM  mudzimtb_ZAGIMORE.product as p , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v, Product_Dimension AS pd
+WHERE c.categoryid = p.categoryid and p.vendorid = v.vendorid 
+AND pd.ProductId= p.ProductId
+AND pd.ProductType = "Sales"
+AND p.productprice != pd.ProductSalesPrice
+
+--- ADD DVF AND DVU
+
+ALTER TABLE Product_Dimension
+ADD DVF DATE, ADD DVU DATE, CurrentStatus CHAR(1);
+
+UPDATE  Product_Dimension SET DVF = "2013-01-01";
+UPDATE  Product_Dimension SET ADD CurrentStatus = 'C';
+
+UPDATE  Product_Dimension SET DVU = "2040-01-01";
+
+--- For DW
+ALTER TABLE mudzimtb_ZAGIMORE_DW.Product_Dimension
+ADD DVF DATE, ADD DVU DATE, ADD CurrentStatus CHAR(1);
+
+UPDATE mudzimtb_ZAGIMORE_DW.Product_Dimension SET DVF = '2013-01-01';
+UPDATE  mudzimtb_ZAGIMORE_DW.Product_Dimension SET CurrentStatus = 'C';
+
+UPDATE mudzimtb_ZAGIMORE_DW.Product_Dimension SET DVU = '2040-01-01';
+
+
+UPDATE `product` SET `productprice` = '200.00' WHERE `product`.`productid` = '1X2';
+UPDATE `product` SET `productprice` = '60.00' WHERE `product`.`productid` = '1X4';
+
+INSERT INTO Product_Dimension (ProductId, Productname, ProductSalesPrice, VendorId, Vendorname, categoryID, Categoryname, 
+ProductType,ExtractionTimestamp, PDLoaded)
+SELECT p.productid, p.productname , p.productprice, v.vendorid, v.vendorname ,c.categoryid, c.categoryname , 'Sales', NOW(), FALSE
+FROM  mudzimtb_ZAGIMORE.product as p , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v 
+WHERE c.categoryid = p.categoryid and p.vendorid = v.vendorid 
+AND p.productId not in (SELECT ProductId FROM Product_Dimension WHERE producttype="Sales");
+
+--- After adding updates of DVU AND DVF
+---Finding IDs of Products that have changed their prices
+CREATE TABLE IPD AS 
+SELECT p.productid
+FROM  mudzimtb_ZAGIMORE.product as p , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v,mudzimtb_ZAGIMORE_DS. Product_Dimension AS pd
+WHERE c.categoryid = p.categoryid and p.vendorid = v.vendorid 
+AND pd.ProductId= p.ProductId
+AND pd.ProductType = "Sales"
+AND p.productprice != pd.ProductSalesPrice
+
+--- Changing the DVU of the Products in the Product Dimension whose prices has changed 
+--1
+UPDATE Product_Dimension  SET DVU = DATE(NOW()) -INTERVAL  1 DAY, CurrentStatus = 'N'
+WHERE pd.ProductId IN(SELECT* FROM IPD)
+
+---2
+INSERT INTO Product_Dimension (ProductId, Productname, ProductSalesPrice, VendorId, Vendorname, categoryID, Categoryname, 
+ProductType,ExtractionTimestamp, PDLoaded,DVF,DVU,CurrentStatus)
+SELECT p.productid, p.productname , p.productprice, v.vendorid, v.vendorname ,c.categoryid, c.categoryname , 'Sales', NOW(), FALSE,NOW(),'2040-01-01','C'
+FROM  mudzimtb_ZAGIMORE.product as p , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v 
+WHERE c.categoryid = p.categoryid and p.vendorid = v.vendorid 
+AND p.productId IN (
+    SELECT * from IPD);
 
 
 
