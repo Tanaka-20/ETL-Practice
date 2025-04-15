@@ -730,6 +730,7 @@ AND p.productId not in (SELECT ProductId FROM Product_Dimension WHERE producttyp
 
 --- After adding updates of DVU AND DVF
 ---Finding IDs of Products that have changed their prices
+DROP TABLE IPD IF EXISTS;
 CREATE TABLE IPD AS 
 SELECT p.productid
 FROM  mudzimtb_ZAGIMORE.product as p , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v,mudzimtb_ZAGIMORE_DS. Product_Dimension AS pd
@@ -741,7 +742,7 @@ AND p.productprice != pd.ProductSalesPrice
 --- Changing the DVU of the Products in the Product Dimension whose prices has changed 
 --1
 UPDATE Product_Dimension  SET DVU = DATE(NOW()) -INTERVAL  1 DAY, CurrentStatus = 'N'
-WHERE pd.ProductId IN(SELECT* FROM IPD)
+WHERE ProductId IN(SELECT* FROM IPD)
 
 ---2
 INSERT INTO Product_Dimension (ProductId, Productname, ProductSalesPrice, VendorId, Vendorname, categoryID, Categoryname, 
@@ -753,11 +754,215 @@ AND p.productId IN (
     SELECT * from IPD);
 
 
+    --- Loading DW 4/10
+
+REPLACE INTO mudzimtb_ZAGIMORE_DW.Product_Dimension( Product_Key, Productname, VendorId, Vendorname,Categoryname, CategoryID,  ProductId,
+ProductType,ProductSalesPrice, ProductDailyRentalPrice, ProductWeeklyRental,DVF,DVU,CurrentStatus)
+SELECT Product_Key, Productname, VendorId, Vendorname,Categoryname, CategoryID,  
+ProductId,ProductType,ProductSalesPrice, ProductDailyRentalPrice, ProductWeeklyRental,DVF,DVU,CurrentStatus
+FROM Product_Dimension
+
+
+UPDATE Product_Dimension
+SET PDLoaded = True;
+
+
+UPDATE `product` SET `productname` = 'Solar Charger' WHERE `product`.`productid` = '1X3';
+UPDATE `product` SET `productname` = 'Safe-B Helmet', `productprice` = '80.00' WHERE `product`.`productid` = '1X4';
+UPDATE `product` SET `vendorid` = 'WL' WHERE `product`.`productid` = '4X2';
+
+
+SELECT p.productid
+FROM  mudzimtb_ZAGIMORE.product as p , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v,mudzimtb_ZAGIMORE_DS. Product_Dimension AS pd
+WHERE c.categoryid = p.categoryid and p.vendorid = v.vendorid 
+AND pd.ProductId= p.ProductId
+AND pd.ProductType = "Sales"
+AND( p.productprice != pd.ProductSalesPrice OR p.Productname != pd.Productname OR p.VendorId!= pd.VendorId)
+AND pd.CurrentStatus = 'C'
+
+DROP TABLE IF EXISTS IPD;
+CREATE TABLE IPD AS;
+SELECT p.productid, pd.ProductType
+FROM  mudzimtb_ZAGIMORE.product as p , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v,mudzimtb_ZAGIMORE_DS. Product_Dimension AS pd
+WHERE c.categoryid = p.categoryid and p.vendorid = v.vendorid 
+AND pd.ProductId= p.ProductId
+AND pd.ProductType = "Sales"
+AND( p.productprice != pd.ProductSalesPrice OR p.Productname != pd.Productname OR p.VendorId!= pd.VendorId)
+AND pd.CurrentStatus = 'C';
+
+UPDATE Product_Dimension  SET DVU = DATE(NOW()) -INTERVAL  1 DAY, CurrentStatus = 'N'
+WHERE ProductId IN(SELECT productid  FROM IPD) AND ProductType = 'Sales';
+
+INSERT INTO IPD (productid,ProductType)
+SELECT r.productid, pd.ProductType
+FROM  mudzimtb_ZAGIMORE.rentalProducts as r , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v,mudzimtb_ZAGIMORE_DS. Product_Dimension AS pd
+WHERE c.categoryid = r.categoryid and r.vendorid = v.vendorid 
+AND pd.ProductId= r.ProductId
+AND pd.ProductType = "Rental"
+AND(  r.productpriceweekly != pd.ProductWeeklyRental OR r.Productname != pd.Productname OR r.VendorId!= pd.VendorId OR 
+r.productpricedaily!= pd.ProductDailyRentalPrice)
+AND pd.CurrentStatus = 'C';
+
+
+UPDATE Product_Dimension  SET DVU = DATE(NOW()) -INTERVAL  1 DAY, CurrentStatus = 'N'
+WHERE ProductId IN(SELECTproductid FROM IPD) AND ProductType = 'Rental';
 
 
 
 
 
+-- Do it for sales
 
+INSERT INTO Product_Dimension (ProductId, Productname, ProductSalesPrice, VendorId, Vendorname, categoryID, Categoryname, 
+ProductType,ExtractionTimestamp, PDLoaded,DVF,DVU,CurrentStatus)
+SELECT p.productid, p.productname , p.productprice, v.vendorid, v.vendorname ,c.categoryid, c.categoryname , 'Sales', NOW(), FALSE,NOW(),'2040-01-01','C'
+FROM  mudzimtb_ZAGIMORE.product as p , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v 
+WHERE c.categoryid = p.categoryid and p.vendorid = v.vendorid 
+AND p.productid IN (
+    SELECT productid from IPD
+    WHERE ProductType= 'Sales');
+
+-- Rentals 
+
+INSERT INTO Product_Dimension (ProductId, Productname,ProductWeeklyRental, ProductDailyRentalPrice, VendorId, Vendorname, categoryID, Categoryname, 
+ProductType,ExtractionTimestamp, PDLoaded,DVF,DVU,CurrentStatus)
+SELECT r.productid, r.productname , r.productpriceweekly, r.productpricedaily, v.vendorid, v.vendorname ,c.categoryid, c.categoryname , 'Rental', NOW(), FALSE,NOW(),'2040-01-01','C'
+FROM  mudzimtb_ZAGIMORE.rentalProducts as r , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v 
+WHERE c.categoryid = r.categoryid and r.vendorid = v.vendorid 
+AND r.productid IN (
+    SELECT productid from IPD
+    WHERE ProductType= 'Rental');
+
+
+ALTER TABLE mudzimtb_ZAGIMORE_DW.RevenueFact
+DROP FOREIGN KEY RevenueFact_ibfk_5;
+
+REPLACE INTO mudzimtb_ZAGIMORE_DW.Product_Dimension( Product_Key, Productname, VendorId, Vendorname,Categoryname, CategoryID,  ProductId,
+ProductType,ProductSalesPrice, ProductDailyRentalPrice, ProductWeeklyRental,DVF,DVU,CurrentStatus)
+SELECT Product_Key, Productname, VendorId, Vendorname,Categoryname, CategoryID,  
+ProductId,ProductType,ProductSalesPrice, ProductDailyRentalPrice, ProductWeeklyRental,DVF,DVU,CurrentStatus
+FROM Product_Dimension
+
+ALTER TABLE mudzimtb_ZAGIMORE_DW.RevenueFact
+ADD CONSTRAINT RevenueFact_ibfk_5
+FOREIGN KEY (Product_Key)
+REFERENCES mudzimtb_ZAGIMORE_DW.Product_Dimension(Product_Key)
+
+UPDATE Product_Dimension
+SET PDloaded= TRUE 
+WHERE PDloaded= FALSE
+
+---Both in DS and DW
+ALTER TABLE Customer_Dimension
+ADD DVF DATE, ADD DVU DATE, CurrentStatus CHAR(1);
+
+ALTER TABLE Store_Dimension
+ADD DVF DATE, ADD DVU DATE, CurrentStatus CHAR(1);
+
+
+UPDATE Store_Dimension SET DVF = '2013-01-01';
+UPDATE Store_Dimension SET CurrentStatus = 'C';
+UPDATE Store_Dimension  SET DVU = '2040-01-01';
+
+UPDATE Customer_Dimension SET DVF = '2013-01-01';
+UPDATE Customer_Dimension SET CurrentStatus = 'C';
+UPDATE Customer_Dimension  SET DVU = '2040-01-01';
+
+UPDATE mudzimtb_ZAGIMORE_DW.Store_Dimension SET DVF = '2013-01-01';
+UPDATE  mudzimtb_ZAGIMORE_DW.Store_Dimension SET CurrentStatus = 'C';
+UPDATE mudzimtb_ZAGIMORE_DW.Store_Dimension  SET DVU = '2040-01-01';
+
+UPDATE mudzimtb_ZAGIMORE_DW.Customer_Dimension SET DVF = '2013-01-01';
+UPDATE  mudzimtb_ZAGIMORE_DW. Customer_Dimension SET CurrentStatus = 'C';
+UPDATE mudzimtb_ZAGIMORE_DW.Customer_Dimension  SET DVU = '2040-01-01';
+
+
+UPDATE `rentalProducts` SET `productpricedaily` = '110.00' WHERE `rentalProducts`.`productid` = '1R8';
+UPDATE `rentalProducts` SET `productpriceweekly` = '75.00' WHERE `rentalProducts`.`productid` = '1X1';
+UPDATE `rentalProducts` SET `productpricedaily` = '4.00', `productpriceweekly` = '24.00' WHERE `rentalProducts`.`productid` = '3X3';
+
+UPDATE `product` SET `productname` = 'WakeUp Pad', `productprice` = '30.00' WHERE `product`.`productid` = '3X1';
+
+
+---Creating procedure for product dimension
+
+CREATE PROCEDURE Product_Refresh()
+ BEGIN
+
+INSERT INTO Product_Dimension (Productname, VendorId, Vendorname, Categoryname,CategoryID, ProductId, 
+ProductType,ProductSalesPrice,ExtractionTimestamp, PDLoaded,DVF,DVU,CurrentStatus)
+SELECT  p.productname ,v.vendorid, v.vendorname ,c.categoryname,c.categoryid, p.productid,'Sales', p.productprice , NOW(),
+ FALSE,NOW(), "2040-01-01", 'C'
+FROM  mudzimtb_ZAGIMORE.product as p , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v 
+WHERE c.categoryid = p.categoryid and p.vendorid = v.vendorid 
+AND p.productid NOT IN (SELECT ProductId FROM Product_Dimension WHERE ProductType="Sales");
+
+INSERT INTO Product_Dimension (Productname, VendorId, Vendorname,Categoryname, CategoryID,  ProductId,ProductType, 
+ProductDailyRentalPrice, ProductWeeklyRental, ExtractionTimeStamp,PDloaded,DVF,DVU,CurrentStatus)
+SELECT p.productname,v.vendorid, v.vendorname ,c.categoryname,c.categoryid,p.productid, 'Rental',
+ p.productpricedaily, p.productpriceweekly,NOW(), FALSE,NOW(), "2040-01-01", 'C'
+FROM  mudzimtb_ZAGIMORE.rentalProducts as p , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v 
+WHERE c.categoryid = p.categoryid and p.vendorid = v.vendorid 
+AND p.productid NOT IN (SELECT ProductId FROM Product_Dimension WHERE ProductType="Rental");
+
+INSERT INTO mudzimtb_ZAGIMORE_DW.Product_Dimension( Product_Key, Productname, VendorId, Vendorname,Categoryname, 
+CategoryID, ProductSalesPrice, 
+ProductDailyRentalPrice, ProductWeeklyRental,ProductType,ProductId,DVF,DVU,CurrentStatus)
+SELECT Product_Key, Productname, VendorId, Vendorname,Categoryname, CategoryID,ProductSalesPrice, ProductDailyRentalPrice,
+ ProductWeeklyRental,ProductType,ProductId,DVF,DVU,CurrentStatus
+FROM Product_Dimension
+WHERE PDLoaded =FALSE;
+
+UPDATE Product_Dimension
+SET PDLoaded = True;
+
+END
+
+--Refresh for Customer Dimension
+
+INSERT INTO `customer` (`customerid`, `customername`, `customerzip`) VALUES ('ABC', 'TAN', '13676');
+
+
+CREATE PROCEDURE Customer_Refresh()
+BEGIN
+
+INSERT INTO Customer_Dimension(CustomerID, CustomerName, CustomerZip,ExtractionTimeStamp, Cloaded,DVF,DVU,CurrentStatus)
+SELECT c.customerid, c.customername, c.customerzip,NOW()-INTERVAL 1 DAY, FALSE,NOW(), '2040-01-01', "C"
+FROM mudzimtb_ZAGIMORE.customer AS c
+WHERE c.customerid NOT IN (SELECT customerID FROM mudzimtb_ZAGIMORE_DS.Customer_Dimension);
+
+INSERT INTO mudzimtb_ZAGIMORE_DW.Customer_Dimension(Customer_Key,CustomerName,CustomerZip,CustomerId,DVF,DVU,CurrentStatus) 
+select Customer_Key,CustomerName,CustomerZip,CustomerId,DVF,DVU,CurrentStatus 
+FROM Customer_Dimension
+WHERE Cloaded = FALSE;
+
+UPDATE Customer_Dimension
+SET Cloaded=TRUE;   
+END
+
+
+---Store refresh
+
+
+INSERT INTO `store` (`storeid`, `storezip`, `regionid`) VALUES ('ABC', '12345', 'C');
+
+CREATE PROCEDURE Store_Refresh()
+BEGIN
+
+INSERT INTO Store_Dimension(StoreID,StoreZip,RegionID, RegionName, ExtractionTimeStamp, Sloaded,DVF,DVU,CurrentStatus )
+SELECT s.storeid, s.storezip, s.regionid, r.regionname, NOW(), FALSE,NOW(), '2040-01-01', "C"
+FROM mudzimtb_ZAGIMORE.store AS s, mudzimtb_ZAGIMORE.region AS r
+WHERE s.regionid = r.regionid
+AND s.storeID NOT IN (SELECT StoreID FROM mudzimtb_ZAGIMORE_DS.Store_Dimension);
+
+INSERT INTO mudzimtb_ZAGIMORE_DW.Store_Dimension(Store_Key,StoreID,StoreZip,RegionID, RegionName,DVF,DVU,CurrentStatus)
+SELECT Store_Key,StoreID,StoreZip,RegionID, RegionName,DVF,DVU,CurrentStatus
+FROM Store_Dimension
+WHERE Sloaded = FALSE;
+
+UPDATE Store_Dimension
+SET Sloaded=TRUE;
+
+END
 
 
