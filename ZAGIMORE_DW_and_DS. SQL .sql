@@ -830,7 +830,7 @@ SELECT r.productid, r.productname , r.productpriceweekly, r.productpricedaily, v
 FROM  mudzimtb_ZAGIMORE.rentalProducts as r , mudzimtb_ZAGIMORE.category as c, mudzimtb_ZAGIMORE.vendor as v 
 WHERE c.categoryid = r.categoryid and r.vendorid = v.vendorid 
 AND r.productid IN (
-    SELECT productid from IPD
+    SELECT pro  ductid from IPD
     WHERE ProductType= 'Rental');
 
 
@@ -918,10 +918,10 @@ SET PDLoaded = True;
 
 END
 
+
 --Refresh for Customer Dimension
 
 INSERT INTO `customer` (`customerid`, `customername`, `customerzip`) VALUES ('ABC', 'TAN', '13676');
-
 
 CREATE PROCEDURE Customer_Refresh()
 BEGIN
@@ -942,7 +942,6 @@ END
 
 
 ---Store refresh
-
 
 INSERT INTO `store` (`storeid`, `storezip`, `regionid`) VALUES ('ABC', '12345', 'C');
 
