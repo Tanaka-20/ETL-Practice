@@ -6,7 +6,7 @@ This repository contains SQL scripts used to design and refresh the **ZAGIMORE D
 Author: **Tanaka**  
 Date: **03-01-2025**
 
----
+
 
 ## Project Overview
 
@@ -20,7 +20,6 @@ The goal of this project is to build a star-schema **data warehouse** that suppo
 - Handling **late arriving facts**
 - Handling **SCD Type 2** changes for dimensions (DVF / DVU / CurrentStatus)
 
----
 
 ## Architecture
 
@@ -33,7 +32,7 @@ The goal of this project is to build a star-schema **data warehouse** that suppo
 ### Data Warehouse (DW)
 - `mudzimtb_ZAGIMORE_DW` (star schema + analytics tables)
 
----
+
 
 ## Star Schema Design
 
@@ -54,7 +53,7 @@ The goal of this project is to build a star-schema **data warehouse** that suppo
   - Keys: Customer_Key, Store_Key, Product_Key, Calendar_Key
   - Supports multiple revenue types: `Sales`, `RentalDaily`, `RentalWeekly`
 
----
+
 
 ## ETL Workflow
 
@@ -74,7 +73,7 @@ Each dimension supports incremental loads using:
 - `Daily_Store_Refresh()`
 - `Daily_Customer_Refresh()`
 
----
+
 
 ### 2) Fact Loading (Incremental Fact ETL)
 Facts are extracted into an **IntermediateFactTable**, then loaded into `RevenueFact`.
@@ -94,7 +93,7 @@ Fact table tracks ETL status using:
 - `ExtractionTimestamp`
 - `f_loaded` (boolean)
 
----
+
 
 ### 3) Daily Refresh Procedure (Facts)
 A full ETL refresh for new daily facts is handled by:
@@ -108,7 +107,6 @@ This procedure:
 4. Pushes only new rows into DW `RevenueFact`
 5. Updates `f_loaded` to prevent duplicates
 
----
 
 ## Analytics Tables (DW Layer)
 
@@ -129,7 +127,6 @@ Tables involved:
   - `TotalLocalRevenue`
   - `HVTransaction` (high value transactions > 100)
 
----
 
 ## Late Arriving Facts
 
@@ -141,8 +138,6 @@ The project includes a stored procedure to recover them:
 This procedure extracts facts where:
 - `TID NOT IN RevenueFact`
 and then loads them into both DS and DW safely.
-
----
 
 ## SCD Type 2 Handling (Dimensions)
 
@@ -163,8 +158,6 @@ Example logic:
    - `DVU = '2040-01-01'`
    - `CurrentStatus = 'C'`
 4. `REPLACE INTO` DW dimension to sync
-
----
 
 ## How To Use This Repo
 
@@ -187,7 +180,6 @@ Example logic:
    - `LateFactRefresh`
 5. Run daily refresh procedures for incremental ETL
 
----
 
 ## Repository Contents (Suggested Structure)
 
@@ -200,7 +192,6 @@ Example logic:
 - `/sql/analytics/`  
   Snapshot tables and revenue aggregation scripts
 
----
 
 ## Notes / Common Issues
 
@@ -209,7 +200,6 @@ Example logic:
   - `DELIMITER $$` ... `$$` ... `DELIMITER ;`
 - Confirm foreign key column names match exactly (e.g., `Product_Key` vs `ProductKey`).
 
----
 
 ## Author
 **Tanaka Mudzimbasekwa**  
