@@ -19,7 +19,9 @@ The goal of this project is to build a star-schema **data warehouse** that suppo
 - Refresh procedures to support daily ETL automation
 - Handling **late arriving facts**
 - Handling **SCD Type 2** changes for dimensions (DVF / DVU / CurrentStatus)
-
+<img width="800" height="415" alt="image" src="https://github.com/user-attachments/assets/067c6150-7323-4300-add1-461395f792a3" />
+* ZAGIMORE Data Warehouse Star Schema and ETL Designer view
+*Visual overview of the ZAGIMORE Data Warehouse built in MySQL using phpMyAdmin, illustrating a star schema. The diagram shows a centralized RevenueFact table linked to conformed Customer, Store, Product, Calendar and Product Category dimensions via surrogate keys and enforced foreign-key constraints. The architecture supports incremental ETL, late-arriving facts and SCD Type 2 tracking with DVF/DVU and status flags, plus daily store snapshots and category-level aggregates for scalable analytics.
 
 ## Architecture
 
